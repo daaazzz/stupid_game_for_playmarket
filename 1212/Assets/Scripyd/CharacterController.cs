@@ -25,6 +25,7 @@ public class CharacterController : MonoBehaviour
     private PlayerInput _playerInput;
     private InputAction _moveAction;
     private InputAction _jumpAction;
+    private PlayerCombatSystem _playerCombatSystem;
 
     private Vector2 _moveInput = Vector2.zero;
     private bool _isGrounded = false;
@@ -39,6 +40,7 @@ public class CharacterController : MonoBehaviour
         _playerInput = GetComponent<PlayerInput>();
         _animator = GetComponent<Animator>();
         _spriteRenderer = GetComponent<SpriteRenderer>();
+        _playerCombatSystem = GetComponent<PlayerCombatSystem>();
     }
 
     private void Awake()
@@ -47,6 +49,7 @@ public class CharacterController : MonoBehaviour
         _playerInput = _playerInput ? _playerInput : GetComponent<PlayerInput>();
         _animator = _animator ? _animator : GetComponent<Animator>();
         _spriteRenderer = _spriteRenderer ? _spriteRenderer : GetComponent<SpriteRenderer>();
+        _playerCombatSystem = _playerCombatSystem ? _playerCombatSystem : GetComponent<PlayerCombatSystem>();
 
         if (_playerInput == null)
         {
@@ -151,5 +154,6 @@ public class CharacterController : MonoBehaviour
     {
         _rb.linearVelocity = new Vector2(_rb.linearVelocity.x, 0);
         _rb.AddForce(Vector2.up * _jumpForce, ForceMode2D.Impulse);
+        _playerCombatSystem.GetDamage(_playerCombatSystem.Damage);
     }
 }
