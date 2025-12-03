@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -8,6 +9,7 @@ public class CharacterController : MonoBehaviour
 {
     [Header("Movement")]
     [SerializeField] private float _moveSpeed = 2f;
+    [SerializeField] private float _attackDelay = 1f;
 
     [Header("Jump Force")]
     [SerializeField] private float _jumpForce = 5f;
@@ -25,12 +27,16 @@ public class CharacterController : MonoBehaviour
     private PlayerInput _playerInput;
     private InputAction _moveAction;
     private InputAction _jumpAction;
+    private InputAction _attackAction;
     private PlayerCombatSystem _playerCombatSystem;
 
     private Vector2 _moveInput = Vector2.zero;
     private bool _isGrounded = false;
+    private bool _hasAttacked = false;
     private float _lastGroundedTime = -10f;
     private float _lastJumpPressedTime = -10f;
+    private bool _canMove = true;
+    private float _lastAttackTime = -10f;
 
     private bool _isFacingRight = true;
 
@@ -63,6 +69,7 @@ public class CharacterController : MonoBehaviour
         {
             _moveAction = _playerInput.actions["Move"];
             _jumpAction = _playerInput.actions["Jump"];
+            _attackAction = _playerInput.actions["Attack"];
 
             if (_moveAction != null)
             {
@@ -73,6 +80,12 @@ public class CharacterController : MonoBehaviour
             {
                 _jumpAction.Enable();
                 _jumpAction.performed += OnJumpPerformed;
+            }
+
+            if (_attackAction != null)
+            {
+                _attackAction.Enable();
+                _attackAction.performed += OnAttackPerformed;
             }
         }
     }
@@ -87,6 +100,12 @@ public class CharacterController : MonoBehaviour
         {
             _jumpAction.Disable();
             _jumpAction.performed -= OnJumpPerformed;
+        }
+
+        if(_attackAction != null)
+        {
+            _attackAction.Disable();
+            _attackAction.performed -= OnAttackPerformed;
         }
     }
 
@@ -124,22 +143,33 @@ public class CharacterController : MonoBehaviour
             {
                 _lastGroundedTime = Time.time;
             }
+
+            if (_hasAttacked && Time.time - _lastAttackTime > _attackDelay)
+            {
+                _hasAttacked = false;
+                _canMove = true;
+            }
         }
     }
 
     private void FixedUpdate()
     {
-        Vector2 linearVelocity = _rb.linearVelocity;
-        linearVelocity.x = _moveInput.x * _moveSpeed;
-        _rb.linearVelocity = linearVelocity;
-
-        bool canUseCoyote = (Time.time - _lastGroundedTime) <= _coyoteTime;
-        bool hasBufferedjump = (Time.time - _lastJumpPressedTime) <= _jumpBufferTime;
-
-        if (canUseCoyote && hasBufferedjump)
+        if (_canMove)
         {
-            DoJump();
-            _lastJumpPressedTime = -10f;
+
+
+            Vector2 linearVelocity = _rb.linearVelocity;
+            linearVelocity.x = _moveInput.x * _moveSpeed;
+            _rb.linearVelocity = linearVelocity;
+
+            bool canUseCoyote = (Time.time - _lastGroundedTime) <= _coyoteTime;
+            bool hasBufferedjump = (Time.time - _lastJumpPressedTime) <= _jumpBufferTime;
+
+            if (canUseCoyote && hasBufferedjump)
+            {
+                DoJump();
+                _lastJumpPressedTime = -10f;
+            }
         }
     }
 
@@ -155,5 +185,17 @@ public class CharacterController : MonoBehaviour
         _rb.linearVelocity = new Vector2(_rb.linearVelocity.x, 0);
         _rb.AddForce(Vector2.up * _jumpForce, ForceMode2D.Impulse);
         _playerCombatSystem.GetDamage(_playerCombatSystem.Damage);
+    }
+    private void OnAttackPerformed(InputAction.CallbackContext context)
+    {
+        Debug.Log("Attack");
+        if (_isGrounded && !_hasAttacked)
+        {
+            _hasAttacked = true;
+            _canMove = false;
+            _rb.linearVelocity = new Vector2(0, _rb.linearVelocity.y);
+            _lastAttackTime = Time.time;
+            _animator.SetTrigger("AttackTrigger");
+        }
     }
 }
